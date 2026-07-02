@@ -1,116 +1,230 @@
-# 🚀 AWS Hyper-Efficient FinOps  
-### Automated Cloud Waste Remediation Engine  
-Cost Analysis • Idle Resource Detection • Serverless Automation  
+# AWS FinOps Analytics Pipeline
 
-This project implements a complete **FinOps Automation Pipeline** using AWS native services.  
-It collects AWS Cost & Usage Report (CUR), transforms it using Glue, analyzes it using Athena, and triggers automated remediation using Lambda + EventBridge.
+**Serverless Cloud Cost Analytics using AWS Cost & Usage Reports (CUR),
+Amazon Athena, AWS Glue, AWS Lambda, and Amazon EventBridge**
 
-The goal is to **detect idle cloud resources** and **reduce cost waste automatically**.
+## Overview
 
----
+AWS FinOps Analytics Pipeline is a serverless cloud cost analytics
+project that demonstrates how AWS native services can be combined to
+analyze cloud spending, identify idle resources, and automate scheduled
+cost monitoring.
 
-# 🌟 Project Overview
+The project ingests AWS Cost & Usage Reports (CUR), catalogs the data
+using AWS Glue, performs SQL-based analytics using Amazon Athena, and
+invokes a Lambda function on a scheduled basis using Amazon EventBridge.
 
-### ✔ Automated CUR Delivery to S3  
-### ✔ Glue Crawler → Creates Athena Table  
-### ✔ Athena → Cost & Usage Analysis  
-### ✔ Idle EC2 Instance Detection  
-### ✔ Lambda → Automated Remediation Logic  
-### ✔ EventBridge → Scheduled Execution  
-### ✔ IAM → Secure Access (no root user)
+> **Note:** This project was implemented using an AWS Academy lab
+> environment during November--December 2025. The lab environment has
+> since expired, so this repository contains the implementation
+> artifacts, SQL queries, architecture, screenshots, and documentation
+> rather than a live deployment.
 
-This architecture is fully **serverless**, scalable, cost-efficient, and requires **zero manual maintenance**.
+------------------------------------------------------------------------
 
-# 🏗 Architecture
+## Architecture
 
-<p align="center">
-  <img src="architecture/architecture.jpg" width="650">
-</p>
+``` text
+AWS Cost & Usage Report (CUR)
+            │
+            ▼
+        Amazon S3
+            │
+            ▼
+     AWS Glue Crawler
+            │
+            ▼
+   Glue Data Catalog
+            │
+            ▼
+     Amazon Athena
+            │
+   SQL Cost Analytics
+            │
+            ▼
+     AWS Lambda
+            │
+            ▼
+ Amazon EventBridge
+ (Scheduled Execution)
+```
 
-# 📂 Repository Structure
-aws-finops-automation-engine/
-│
-├── lambda/
-│ └── fremediation_bot.py
-│
-├── sql/
-│ ├── cost_by_service.sql
-│ ├── daily_cost_trend.sql
-│ └── idle_ec2_detection.sql
-│
-├── architecture/
-│ └── architecture.jpg
-│
-├── screenshots/
-│ └── (AWS screenshots)
-│
-└── report/
-└── AWS-Hyper-Efficient-FinOps.pdf
+------------------------------------------------------------------------
 
-# 🔧 AWS Services Used & Why
+## Features
 
-| Service | Why We Used It |
-|--------|----------------|
-| **S3** | Stores CUR files in Parquet format. |
-| **CUR** | Provides detailed cost & usage data. |
-| **Glue Crawler** | Auto-detects schema & builds Athena table. |
-| **Glue Data Catalog** | Metadata layer for analytics. |
-| **Athena** | Serverless SQL to analyze CUR data. |
-| **Lambda** | Runs automated remediation bot. |
-| **EventBridge** | Schedules Lambda every 6 hours. |
-| **IAM** | Secure identity instead of root account. |
+-   Automated AWS Cost & Usage Report (CUR) delivery to Amazon S3
+-   Metadata discovery using AWS Glue Crawlers
+-   Serverless SQL analytics using Amazon Athena
+-   Service-wise cloud cost analysis
+-   Daily cloud spending trend analysis
+-   Idle EC2 usage detection
+-   Scheduled automation using Amazon EventBridge
+-   AWS Lambda workflow for recurring FinOps analysis
+-   IAM-based secure access
 
-# 🧠 Key Athena Queries
+------------------------------------------------------------------------
 
-### 🔹 1. Cost by AWS Service
-```sql
+## Technology Stack
+
+### AWS Services
+
+-   Amazon S3
+-   AWS Cost & Usage Reports (CUR)
+-   AWS Glue
+-   AWS Glue Data Catalog
+-   Amazon Athena
+-   AWS Lambda
+-   Amazon EventBridge
+-   AWS IAM
+-   Amazon CloudWatch
+
+### Languages
+
+-   SQL
+-   Python
+
+------------------------------------------------------------------------
+
+## Workflow
+
+1.  AWS Cost & Usage Reports are exported to Amazon S3.
+2.  AWS Glue Crawlers scan CUR data and build the Glue Data Catalog.
+3.  Amazon Athena queries the cataloged data using serverless SQL.
+4.  Analytics identify:
+    -   Cost by AWS service
+    -   Daily spending trends
+    -   Low-utilization EC2 instances
+5.  Amazon EventBridge invokes AWS Lambda every six hours.
+6.  Lambda executes the scheduled FinOps monitoring workflow.
+
+------------------------------------------------------------------------
+
+## SQL Analytics
+
+### Cost by AWS Service
+
+``` sql
 SELECT product_servicecode,
        SUM(line_item_unblended_cost) AS cost
 FROM finops_cur_db.cur_data
 GROUP BY product_servicecode
 ORDER BY cost DESC;
+```
 
-🔹 2. Daily Cost Trend
-SELECT DATE(line_item_usage_start_date),
-       SUM(line_item_unblended_cost)
+### Daily Cost Trend
+
+``` sql
+SELECT DATE(line_item_usage_start_date) AS day,
+       SUM(CAST(line_item_unblended_cost AS DOUBLE)) AS cost
 FROM finops_cur_db.cur_data
 GROUP BY 1
-ORDER BY 1;
+ORDER BY day;
+```
 
-🔹 3. Idle EC2 Detection
-SELECT line_item_resource_id,
-       SUM(line_item_usage_amount) AS hours
+### Idle EC2 Detection
+
+``` sql
+SELECT line_item_resource_id AS instance_id,
+       SUM(CAST(line_item_usage_amount AS DOUBLE)) AS total_hours
 FROM finops_cur_db.cur_data
-WHERE product_servicecode='AmazonEC2'
+WHERE line_item_product_code='AmazonEC2'
   AND line_item_usage_type LIKE '%BoxUsage%'
 GROUP BY line_item_resource_id
-ORDER BY hours ASC;
+ORDER BY total_hours ASC;
+```
 
-🤖 Lambda Remediation Bot
+------------------------------------------------------------------------
 
-lambda/remediation_bot.py:
+## Repository Structure
 
-import boto3
+``` text
+aws-finops-analytics-pipeline/
+│
+├── architecture/
+│   └── architecture.jpg
+│
+├── lambda/
+│   └── remediation_bot.py
+│
+├── sql/
+│   ├── cost_by_service.sql
+│   ├── daily_cost_trend.sql
+│   └── idle_ec2_detection.sql
+│
+├── screenshots/
+│
+├── report/
+│   └── AWS-Hyper-Efficient-FinOps.pdf
+│
+└── README.md
+```
 
-def lambda_handler(event, context):
-    print("FinOps Remediation Bot Executed")
-    return {"status": "Success"}
+------------------------------------------------------------------------
 
+## Current Capabilities
 
-Future enhancement: auto-stop idle EC2, send alerts, integrate SNS.
+-   Automated CUR ingestion
+-   Glue metadata catalog creation
+-   Athena-based SQL analytics
+-   Scheduled FinOps workflow using EventBridge
+-   Identification of potentially idle EC2 resources
+-   Serverless architecture using AWS managed services
 
-⏱ EventBridge Scheduler
-Runs every 6 hours
-Triggers the Lambda function
-Enables continuous automated FinOps monitoring
+------------------------------------------------------------------------
 
-📘 Detailed Report
-Full project report available at:
-report/AWS-Hyper-Efficient-FinOps.pdf
+## Screenshots
 
-🚀 Future Enhancements
-QuickSight dashboards (when region supports it)
-Auto-stop or hibernate idle EC2
-Team-wise cost allocation via tags
-SNS notifications
-Real-time EC2 monitoring system
+Include screenshots for:
+
+-   S3 Bucket
+-   CUR Storage
+-   Glue Crawler
+-   Glue Database
+-   Athena Queries
+-   EventBridge Scheduler
+-   Architecture Diagram
+
+------------------------------------------------------------------------
+
+## Limitations
+
+-   Uses historical CUR data rather than real-time metrics.
+-   Lambda currently demonstrates the scheduled workflow and does not
+    automatically stop EC2 instances.
+-   Amazon QuickSight dashboards were not implemented because they were
+    unavailable in the AWS Academy environment.
+
+------------------------------------------------------------------------
+
+## Future Enhancements
+
+-   Automatic EC2 stop/hibernate for confirmed idle resources
+-   SNS email notifications
+-   Amazon QuickSight dashboards
+-   Cost allocation by tags
+-   Multi-account AWS Organizations support
+-   Cost anomaly detection using machine learning
+
+------------------------------------------------------------------------
+
+## Learning Outcomes
+
+-   AWS Cost & Usage Reports (CUR)
+-   Serverless Data Engineering
+-   AWS Glue Data Catalog
+-   Amazon Athena
+-   SQL Analytics
+-   Event-Driven Architecture
+-   Cloud Cost Optimization (FinOps)
+-   AWS IAM and Security
+
+------------------------------------------------------------------------
+
+## Author
+
+**Shivangi Dubey**
+
+B.Tech Computer Science & Engineering (AI & ML)
+
+SRM University-AP
